@@ -29,6 +29,15 @@ def create_server() -> Server:
     """
     Create and configure the MCP server with all registered tools.
     """
+    server, _ = create_server_with_registry()
+    return server
+
+
+def create_server_with_registry() -> tuple[Server, ToolRegistry]:
+    """
+    Create and configure the MCP server with all registered tools.
+    Returns both the server and registry for HTTP transport access.
+    """
     settings = get_settings()
 
     # Initialize shared infrastructure
@@ -65,7 +74,7 @@ def create_server() -> Server:
         content = types.TextContent(type="text", text=json.dumps(result))
         return [types.CallToolResult(content=[content])]
 
-    return server
+    return server, registry
 
 
 def main() -> None:

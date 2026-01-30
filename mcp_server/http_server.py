@@ -5,8 +5,10 @@ from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
+from mcp import types
 
-from .main import create_server
+from .main import create_server_with_registry
+from .tools import ToolRegistry
 
 
 def create_http_app() -> FastAPI:
@@ -24,8 +26,8 @@ def create_http_app() -> FastAPI:
         description="MCP server for Hospital Medicine Reminder App",
     )
     
-    # Create the MCP server instance (shared across requests)
-    mcp_server = create_server()
+    # Create the MCP server instance and registry (shared across requests)
+    mcp_server, registry = create_server_with_registry()
     
     @app.get("/health")
     async def health():
@@ -74,7 +76,8 @@ def create_http_app() -> FastAPI:
                 
                 # Handle MCP protocol methods
                 if method == "tools/list":
-                    tools = await mcp_server.list_tools()
+                    # Use registry directly since Server doesn't expose list_tools()
+                    tools = registry.list_tools()
                     response = {
                         "jsonrpc": "2.0",
                         "id": message_id,
@@ -88,11 +91,16 @@ def create_http_app() -> FastAPI:
                     arguments = params.get("arguments", {})
                     
                     try:
-                        result = await mcp_server.call_tool(tool_name, arguments)
+                        # Use registry to get handler and call it directly
+                        handler = registry.get_handler(tool_name)
+                        result = await handler(arguments)
+                        # Format as MCP CallToolResult
+                        content = types.TextContent(type="text", text=json.dumps(result))
+                        call_result = types.CallToolResult(content=[content])
                         response = {
                             "jsonrpc": "2.0",
                             "id": message_id,
-                            "result": {"content": [r.model_dump() for r in result]},
+                            "result": {"content": [call_result.model_dump()]},
                         }
                     except Exception as e:
                         response = {
