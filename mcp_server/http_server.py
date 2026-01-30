@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 from mcp import types
 from mcp.server import Server
-from mcp.server.models import InitializationOptions
 
 from .main import create_server_with_registry
 from .tools import ToolRegistry
@@ -53,14 +52,24 @@ def create_http_app() -> FastAPI:
             "transport": "http/sse",
             "endpoints": {
                 "health": "/health",
+                "mcp": "/mcp",
                 "mcp_stream": "/mcp/stream",
             },
         }
     
+    @app.post("/mcp")
+    async def mcp_endpoint(request: Request):
+        """MCP endpoint (standard path)."""
+        return await handle_mcp_request_internal(request, mcp_server, registry)
+    
     @app.post("/mcp/stream")
     async def mcp_stream(request: Request):
+        """MCP stream endpoint (alternative path for compatibility)."""
+        return await handle_mcp_request_internal(request, mcp_server, registry)
+    
+    async def handle_mcp_request_internal(request: Request, mcp_server: Server, registry: ToolRegistry):
         """
-        MCP SSE stream endpoint.
+        Handle MCP protocol communication over HTTP/SSE.
         
         This endpoint handles MCP protocol communication over HTTP/SSE.
         Clients connect here to interact with the MCP server.
@@ -183,11 +192,12 @@ async def handle_mcp_request(
         # Handle MCP protocol methods
         if method == "initialize":
             # MCP initialization handshake
-            init_options = InitializationOptions(**params) if params else InitializationOptions()
+            # The client sends: protocolVersion, capabilities, clientInfo
+            # We respond with: protocolVersion, capabilities, serverInfo
+            # We don't need to parse params into InitializationOptions - 
+            # we just need to respond with our server info
             
             # Get server capabilities and info
-            # The Server object should expose these, but we'll construct them
-            # based on what handlers are registered
             capabilities = {
                 "tools": {},
                 "resources": {},
@@ -199,7 +209,6 @@ async def handle_mcp_request(
             capabilities["tools"] = {"listChanged": False}
             
             # Resources and prompts are optional
-            # Check if handlers are registered (they may not be)
             # For now, we don't support resources or prompts
             # but the structure is here for future expansion
             
