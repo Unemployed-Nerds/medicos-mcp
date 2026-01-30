@@ -1,0 +1,57 @@
+# Caddyfile for Medicos MCP Backend
+# Place this file in /etc/caddy/ or your Caddy config directory
+# Or use: caddy adapt --config Caddyfile
+
+mcp.p1ng.me {
+    # Reverse proxy to MCP server running on port 8000
+    reverse_proxy localhost:8000 {
+        # Disable buffering for SSE (Server-Sent Events)
+        flush_interval -1
+        
+        # Headers for SSE streaming
+        header_up Connection "keep-alive"
+        header_up Cache-Control "no-cache"
+        
+        # Health check
+        health_uri /health
+        health_interval 30s
+        health_timeout 5s
+    }
+    
+    # Optional: Add logging
+    log {
+        output file /var/log/caddy/mcp-access.log
+        format json
+    }
+    
+    # Optional: Add rate limiting (adjust as needed)
+    # rate_limit {
+    #     zone mcp_limit {
+    #         key {remote_host}
+    #         events 100
+    #         window 1m
+    #     }
+    # }
+}
+
+# Alternative: If you want to serve multiple endpoints or add authentication
+# mcp.p1ng.me {
+#     # Health check endpoint (public)
+#     handle /health {
+#         reverse_proxy localhost:8000
+#     }
+#     
+#     # MCP stream endpoint (main endpoint)
+#     handle /mcp/stream {
+#         reverse_proxy localhost:8000 {
+#             flush_interval -1
+#             header_up Connection "keep-alive"
+#             header_up Cache-Control "no-cache"
+#         }
+#     }
+#     
+#     # Root endpoint
+#     handle / {
+#         reverse_proxy localhost:8000
+#     }
+# }
