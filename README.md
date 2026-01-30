@@ -146,7 +146,7 @@ For deployment behind a reverse proxy (e.g., `mcp.p1ng.me`):
    # Server listens on http://0.0.0.0:8000
    ```
 
-3. **Configure reverse proxy** (see `nginx.example.conf`):
+3. **Configure reverse proxy** (using Caddy, nginx, or similar):
    - Point `mcp.p1ng.me` to your VPS
    - Proxy `/mcp/stream` and `/mcp/message` to `http://localhost:8000`
    - Set up SSL/TLS certificates
