@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medicos-mcp-backend
+    restart: unless-stopped
+    
+    # Environment variables
+    # You can set these here or use a .env file (recommended)
+    environment:
+      - MEDICOS_ENV=${MEDICOS_ENV:-dev}
+      - MEDICOS_TRANSPORT=${MEDICOS_TRANSPORT:-http}
+      - MEDICOS_SERVER_HOST=${MEDICOS_SERVER_HOST:-0.0.0.0}
+      - MEDICOS_SERVER_PORT=${MEDICOS_SERVER_PORT:-8000}
+      - MEDICOS_FIREBASE_PROJECT_ID=${MEDICOS_FIREBASE_PROJECT_ID}
+      - MEDICOS_FIREBASE_CREDENTIALS_FILE=${MEDICOS_FIREBASE_CREDENTIALS_FILE:-/app/credentials/firebase-service-account.json}
+      - MEDICOS_ARMORIQ_API_KEY=${MEDICOS_ARMORIQ_API_KEY}
+      - MEDICOS_LLM_PROVIDER=${MEDICOS_LLM_PROVIDER:-openai}
+      - MEDICOS_LLM_API_KEY=${MEDICOS_LLM_API_KEY}
+      # Google Application Default Credentials (alternative to service account file)
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-/app/credentials/firebase-service-account.json}
+    
+    # Mount Firebase credentials (if using service account file)
+    # Make sure to create ./credentials/ directory and place your Firebase service account JSON there
+    volumes:
+      - ./credentials:/app/credentials:ro
+      # Optional: mount .env file if you prefer file-based config
+      - ./.env:/app/.env:ro
+    
+    # Expose HTTP port for reverse proxy
+    ports:
+      - "${MCP_SERVER_PORT:-8000}:8000"
+    
+    # Health check (for HTTP transport)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
